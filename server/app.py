@@ -1,45 +1,96 @@
-#!/usr/bin/env python3
-
 from flask import Flask, jsonify
-from flask_migrate import Migrate
-
 from models import db, Event, Session, Speaker, Bio
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///app.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.json.compact = False
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-migrate = Migrate(app, db)
 db.init_app(app)
 
-# TODO: add functionality to all routes
 
-@app.route('/events')
+@app.route('/events', methods=['GET'])
 def get_events():
-    pass
+    events = Event.query.all()
+
+    return jsonify([
+        {
+            'id': event.id,
+            'name': event.name,
+            'location': event.location
+        }
+        for event in events
+    ]), 200
 
 
-@app.route('/events/<int:id>/sessions')
+@app.route('/events/<int:id>/sessions', methods=['GET'])
 def get_event_sessions(id):
-    pass
+    event = db.session.get(Event, id)
+
+    if not event:
+        return jsonify({'error': 'Event not found'}), 404
+
+    return jsonify([
+        {
+            'id': session.id,
+            'title': session.title,
+            'start_time': session.start_time.isoformat()
+        }
+        for session in event.sessions
+    ]), 200
 
 
-@app.route('/speakers')
+@app.route('/speakers', methods=['GET'])
 def get_speakers():
-    pass
+    speakers = Speaker.query.all()
+
+    return jsonify([
+        {
+            'id': speaker.id,
+            'name': speaker.name
+        }
+        for speaker in speakers
+    ]), 200
 
 
-@app.route('/speakers/<int:id>')
+@app.route('/speakers/<int:id>', methods=['GET'])
 def get_speaker(id):
-    pass
+    speaker = db.session.get(Speaker, id)
+
+    if not speaker:
+        return jsonify({'error': 'Speaker not found'}), 404
+
+    return jsonify({
+        'id': speaker.id,
+        'name': speaker.name,
+        'bio_text': (
+            speaker.bio.bio_text
+            if speaker.bio
+            else 'No bio available'
+        )
+    }), 200
 
 
-@app.route('/sessions/<int:id>/speakers')
+@app.route('/sessions/<int:id>/speakers', methods=['GET'])
 def get_session_speakers(id):
-    pass
+    session = db.session.get(Session, id)
+
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+
+    return jsonify([
+        {
+            'id': speaker.id,
+            'name': speaker.name,
+            'bio_text': (
+                speaker.bio.bio_text
+                if speaker.bio
+                else 'No bio available'
+            )
+        }
+        for speaker in session.speakers
+    ]), 200
 
 
 if __name__ == '__main__':
-    app.run(port=5555, debug=True)
+    app.run(debug=True)
